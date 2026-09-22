@@ -2,3 +2,5 @@ PROJECT : "Design and Simulation of a Smart Parking Slot Availability and Entry 
 
 
 IS DONE BY 2620040172MANNAVA YAGNA SARAVANA KUSHAL,2620080007 VEMULURI LOHITHA,2620080008 SUNDI MANILATHA,2620080013  MOKKAPATI SIMRIT
+
+Presentation Link :https://klh-fed-2026-section-9-batch-13.vercel.app/
