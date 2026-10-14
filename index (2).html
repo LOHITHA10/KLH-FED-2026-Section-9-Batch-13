@@ -1,0 +1,549 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>4-Bit Universal Shift Register — DDCA Final Project</title>
+<style>
+  :root{
+    --pink:#7c8cff; --pink-bright:#9fc0ff; --pink-soft:rgba(138,180,255,0.16);
+    --text:#e9edff; --muted:#a3aed8;
+    --card-bg:rgba(16,24,58,0.72); --card-border:rgba(138,180,255,0.28);
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  html,body{height:100%;}
+  body{
+    background:
+      radial-gradient(ellipse at 20% 0%, rgba(99,102,241,0.28), transparent 55%),
+      radial-gradient(ellipse at 85% 105%, rgba(168,85,247,0.20), transparent 50%),
+      linear-gradient(180deg,#040714 0%,#0a1030 60%,#151a48 100%);
+    color:var(--text); font-family:'Segoe UI',system-ui,-apple-system,sans-serif;
+    overflow:hidden; height:100vh; position:relative;
+  }
+  .deck{ position:relative; z-index:2; max-width:1080px; margin:0 auto; padding:56px 32px 0; height:100%; overflow-y:auto; }
+  .slide{ display:none; padding-bottom:100px; }
+  .slide.active{ display:block; animation:fadeInUp .5s ease; }
+  @keyframes fadeInUp{ from{opacity:0; transform:translateY(12px);} to{opacity:1; transform:translateY(0);} }
+
+  .index{ position:absolute; top:56px; right:32px; font-size:12px; color:var(--muted); letter-spacing:.08em; }
+  .eyebrow{ display:flex; align-items:center; gap:10px; font-size:12px; letter-spacing:.12em; color:var(--muted); margin-bottom:6px; text-transform:uppercase; }
+  .eyebrow .rule{ width:24px; height:1px; background:var(--muted); display:inline-block; }
+  h1{ font-size:40px; line-height:1.1; font-weight:800; letter-spacing:-.01em; margin-bottom:6px; }
+  h1 .accent{ color:var(--pink-bright); }
+  .desc{ max-width:760px; margin:10px 0 0; color:var(--muted); font-size:14.5px; line-height:1.6; }
+  h2.sec{ font-size:11px; letter-spacing:.1em; color:var(--pink-bright); margin:22px 0 10px; font-weight:700; text-transform:uppercase; }
+
+  .cards{ display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:14px; margin-top:20px; }
+  .cards.c3{ grid-template-columns:repeat(3,minmax(0,1fr)); }
+  .cards.c2{ grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .card{
+    background:var(--card-bg); border:1px solid var(--card-border); border-radius:12px; padding:14px 16px;
+    backdrop-filter:blur(4px); transition:transform .2s, border-color .2s, box-shadow .2s;
+  }
+  .card:hover{ transform:translateY(-3px); border-color:var(--pink); box-shadow:0 10px 22px rgba(138,180,255,.18); }
+  .card .label{ font-size:10px; letter-spacing:.1em; color:var(--pink-bright); margin-bottom:6px; font-weight:700; text-transform:uppercase; }
+  .card .value{ font-size:13.5px; font-weight:600; line-height:1.45; }
+  .card .t{ font-size:14px; font-weight:700; margin-bottom:4px; }
+  .card .d{ font-size:12.5px; color:var(--muted); line-height:1.5; }
+  .mono{ font-family:'Cascadia Code','Consolas',monospace; }
+
+  .roster{ display:flex; flex-direction:column; gap:8px; }
+  .roster-row{ display:flex; align-items:baseline; gap:10px; }
+  .roll{ font-family:'Cascadia Code','Consolas',monospace; font-size:11.5px; color:var(--pink-bright); background:var(--pink-soft); border-radius:5px; padding:2px 6px; font-weight:700; }
+  .name{ font-size:13.5px; font-weight:600; }
+  .badge{ display:inline-block; font-size:11px; letter-spacing:.08em; font-weight:600; color:#fff; background:linear-gradient(135deg,#4f46e5,#7c3aed); padding:7px 14px; border-radius:999px; margin-bottom:18px; box-shadow:0 4px 14px rgba(99,102,241,.45); }
+  [contenteditable]{ outline:none; border-bottom:1px dashed var(--pink); min-width:60px; display:inline-block; padding:0 4px; }
+
+  table{ border-collapse:collapse; width:100%; margin-top:8px; }
+  th,td{ border:1px solid var(--card-border); padding:8px 12px; text-align:center; font-size:13px; }
+  th{ background:var(--pink-soft); color:var(--pink-bright); font-weight:700; }
+  td{ background:rgba(16,24,58,.6); }
+
+  .eq{ margin-top:12px; background:var(--card-bg); border:1px solid var(--card-border); border-radius:8px; padding:12px 18px; font-family:'Cascadia Code','Consolas',monospace; font-size:14px; }
+  .eq b{ color:var(--pink-bright); }
+
+  .grid2{ display:grid; grid-template-columns:1fr 1fr; gap:22px; align-items:start; margin-top:18px; }
+  .grid2 > div > h2.sec{ margin-top:0; }
+  ul.pts{ list-style:none; display:flex; flex-direction:column; gap:9px; }
+  ul.pts li{ font-size:13.5px; color:var(--text); line-height:1.5; padding-left:16px; position:relative; }
+  ul.pts li::before{ content:""; position:absolute; left:0; top:8px; width:6px; height:6px; border-radius:50%; background:var(--pink-bright); }
+  ul.pts li span{ color:var(--muted); }
+
+  .diagram{ background:var(--card-bg); border:1px solid var(--card-border); border-radius:12px; padding:12px; }
+  .diagram svg{ width:100%; height:auto; display:block; }
+
+  /* screenshot slot */
+  .shot{ position:relative; border:2px dashed var(--card-border); border-radius:12px; background:rgba(16,24,58,.5); min-height:230px; display:flex; align-items:center; justify-content:center; text-align:center; overflow:hidden; cursor:pointer; transition:border-color .2s; }
+  .shot:hover{ border-color:var(--pink-bright); }
+  .shot img{ width:100%; height:100%; object-fit:contain; display:block; }
+  .shot .hint{ color:var(--muted); font-size:13px; line-height:1.6; padding:20px; }
+  .shot .hint b{ display:block; color:var(--pink-bright); font-size:14px; margin-bottom:4px; }
+  .shot input{ position:absolute; inset:0; opacity:0; cursor:pointer; }
+  .cap{ font-size:11.5px; color:var(--muted); margin-top:6px; text-align:center; }
+
+  .progress{ position:absolute; bottom:30px; left:32px; display:flex; gap:6px; z-index:3; }
+  .dot{ width:16px; height:3px; border-radius:2px; background:var(--pink-soft); cursor:pointer; transition:all .3s; }
+  .dot.active{ background:var(--pink-bright); width:26px; }
+  .arrows{ position:absolute; bottom:24px; right:32px; display:flex; gap:10px; z-index:3; }
+  .arrow{ width:38px; height:38px; border-radius:50%; border:1px solid var(--card-border); background:var(--card-bg); color:var(--pink-bright); display:flex; align-items:center; justify-content:center; cursor:pointer; transition:all .2s; }
+  .arrow:hover{ background:var(--pink); color:#fff; transform:scale(1.06); }
+  .arrow svg{ width:15px; height:15px; }
+
+  .sky{ position:fixed; inset:0; overflow:hidden; pointer-events:none; z-index:0; }
+  .star{ position:absolute; border-radius:50%; background:#fff; opacity:.3; animation:twinkle var(--t) ease-in-out var(--dl) infinite alternate; }
+  @keyframes twinkle{ from{opacity:.15; transform:scale(.7);} to{opacity:1; transform:scale(1.2);} }
+
+  /* animated travelling line */
+  .line-layer{ position:absolute; top:0; left:0; width:100%; height:55%; pointer-events:none; opacity:.95; transition:opacity .3s ease; z-index:1; }
+  .line-layer svg{ width:100%; height:100%; }
+  .path-track{ fill:none; stroke:rgba(138,180,255,0.18); stroke-width:1.5; }
+  .path-glow{ fill:none; stroke:var(--pink); stroke-width:2.2; stroke-dasharray:6 700; filter:drop-shadow(0 0 7px rgba(138,180,255,0.65)); animation:travel 7s linear infinite; }
+  @keyframes travel{ 0%{stroke-dashoffset:0;} 100%{stroke-dashoffset:-706;} }
+  .node{ fill:var(--pink-bright); filter:drop-shadow(0 0 8px rgba(138,180,255,0.7)); animation:pulse 2.4s ease-in-out infinite; }
+  @keyframes pulse{ 0%,100%{ r:4; opacity:1; } 50%{ r:6; opacity:.6; } }
+
+  /* step-by-step staggered entrance */
+  .slide.active .eyebrow, .slide.active .badge, .slide.active h1, .slide.active .desc,
+  .slide.active .card, .slide.active table, .slide.active .eq, .slide.active .grid2 > div,
+  .slide.active .diagram, .slide.active .shot, .slide.active h2.sec{
+    opacity:0; animation:fadeInUp .55s ease forwards;
+  }
+  .slide.active .eyebrow{ animation-delay:.02s; }
+  .slide.active .badge{ animation-delay:.1s; }
+  .slide.active h1{ animation-delay:.18s; }
+  .slide.active .desc{ animation-delay:.26s; }
+  .slide.active h2.sec{ animation-delay:.32s; }
+  .slide.active .grid2 > div:nth-child(1){ animation-delay:.34s; }
+  .slide.active .grid2 > div:nth-child(2){ animation-delay:.44s; }
+  .slide.active table{ animation-delay:.42s; }
+  .slide.active .eq{ animation-delay:.5s; }
+  .slide.active .cards .card:nth-child(1){ animation-delay:.34s; }
+  .slide.active .cards .card:nth-child(2){ animation-delay:.40s; }
+  .slide.active .cards .card:nth-child(3){ animation-delay:.46s; }
+  .slide.active .cards .card:nth-child(4){ animation-delay:.52s; }
+
+  /* moon, shooting stars, shining stars */
+  .star.shine{ box-shadow:0 0 6px 2px rgba(190,215,255,.85), 0 0 14px 4px rgba(140,170,255,.45); animation-name:shine; }
+  @keyframes shine{ from{ opacity:.45; transform:scale(.8); } to{ opacity:1; transform:scale(1.7); } }
+  .shoot{ position:absolute; width:140px; height:2px; border-radius:2px; background:linear-gradient(90deg, rgba(255,255,255,0), #fff); box-shadow:0 0 8px 1px rgba(190,215,255,.8); opacity:0; animation:shoot 1.2s ease-out forwards; }
+  @keyframes shoot{ 0%{ opacity:0; transform:translate(0,0) rotate(33deg); } 15%{ opacity:1; } 100%{ opacity:0; transform:translate(520px,340px) rotate(33deg); } }
+  .moon{ position:fixed; top:6px; right:12px; z-index:1; width:clamp(56px,7vw,96px); aspect-ratio:1; border-radius:50%; overflow:hidden; pointer-events:none;
+    box-shadow:0 0 36px 6px rgba(255,244,214,.35), 0 0 90px 20px rgba(160,180,255,.18); }
+  .moon-surface{ position:absolute; top:0; left:0; height:100%; width:200%;
+    background-color:#e8e3d0; background-size:50% 100%; background-repeat:repeat-x;
+    background-image:
+      radial-gradient(circle at 25% 30%, rgba(140,138,125,.6) 0 11%, transparent 12%),
+      radial-gradient(circle at 62% 20%, rgba(150,148,135,.5) 0 7%, transparent 8%),
+      radial-gradient(circle at 76% 62%, rgba(135,133,120,.6) 0 13%, transparent 14%),
+      radial-gradient(circle at 36% 74%, rgba(150,148,135,.5) 0 8%, transparent 9%),
+      radial-gradient(circle at 8% 58%, rgba(150,148,135,.5) 0 5%, transparent 6%);
+    animation:moonspin 36s linear infinite; }
+  @keyframes moonspin{ from{ transform:translateX(0); } to{ transform:translateX(-50%); } }
+  .moon::after{ content:""; position:absolute; inset:0; border-radius:50%; background:radial-gradient(circle at 30% 30%, transparent 35%, rgba(6,10,28,.7) 100%); }
+  @media (prefers-reduced-motion: reduce){ .star,.shoot,.moon-surface{ animation:none; } }
+
+  @media (max-width:760px){
+    h1{font-size:28px;} .cards,.cards.c3{grid-template-columns:repeat(2,minmax(0,1fr));} .grid2{grid-template-columns:1fr;} .deck{padding-top:44px;}
+  }
+  @media print{ body{overflow:visible;height:auto;} .deck{height:auto;overflow:visible;} .slide{display:block!important; page-break-after:always;} .progress,.arrows,.sky{display:none;} }
+</style>
+</head>
+<body>
+<div class="sky" id="sky"></div>
+<div class="moon"><div class="moon-surface"></div></div>
+
+<div class="line-layer" id="lineLayer">
+  <svg viewBox="0 0 1000 300" preserveAspectRatio="none">
+    <path class="path-track" id="pathTrack" d="M 20,40 C 250,10 400,120 550,90 S 850,180 980,60" />
+    <path class="path-glow" id="pathGlow" d="M 20,40 C 250,10 400,120 550,90 S 850,180 980,60" />
+    <circle class="node" id="lineNode" cx="20" cy="40" r="4" />
+  </svg>
+</div>
+
+<div class="deck" id="deck">
+
+  <!-- 1. TITLE -->
+  <section class="slide active">
+    <div class="index">01 / 06</div>
+    <div class="eyebrow"><span class="rule"></span>DDCA Final Project Demonstration</div>
+    <div class="badge">Digital Design &amp; Computer Architecture</div>
+    <h1>4-Bit Universal<br><span class="accent">Shift Register</span></h1>
+    <p class="desc">Built with 4:1 multiplexers and D flip-flops, implemented and simulated in Logisim.</p>
+    <div class="cards c2" style="margin-top:30px;">
+      <div class="card">
+        <div class="label">Team Members</div>
+        <div class="roster">
+          <div class="roster-row"><span class="roll">2620080007</span><span class="name">Vemuluri Lohitha</span></div>
+          <div class="roster-row"><span class="roll">2620080008</span><span class="name">Sundi Manilatha</span></div>
+          <div class="roster-row"><span class="roll">2620080013</span><span class="name">Mokkapati Simrit</span></div>
+          <div class="roster-row"><span class="roll">2620040172</span><span class="name">Mannava Yagna Saravana Kushal</span></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="label">Section</div>
+        <div class="value" style="margin-bottom:14px;">Section 9</div>
+        <div class="label">Course</div>
+        <div class="value" style="margin-bottom:14px;">Digital Design &amp; Computer Architecture</div>
+        <div class="label">Instructor</div>
+        <div class="value">Dayarnab Baidya</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 2. INTRO & OBJECTIVE -->
+  <section class="slide">
+    <div class="index">02 / 06</div>
+    <div class="eyebrow"><span class="rule"></span>Introduction &amp; Objective</div>
+    <h1>One register, <span class="accent">four operations</span></h1>
+    <p class="desc">A shift register is a sequential circuit that stores and shifts binary data. A universal shift register performs all four operations in a single circuit, chosen by two mode-select lines.</p>
+
+    <div class="grid2">
+      <div>
+        <h2 class="sec">Introduction</h2>
+        <ul class="pts">
+          <li>Combines <b>combinational logic</b> (4:1 MUX from AND, OR, NOT gates) with <b>memory</b> (D flip-flops).</li>
+          <li>The MUX decides <i>what</i> to store; the flip-flop <i>remembers</i> it on the clock edge.</li>
+          <li>Needed for serial-to-parallel conversion, temporary storage, and multiply/divide by 2 using shifts.</li>
+        </ul>
+      </div>
+      <div>
+        <h2 class="sec">Objectives</h2>
+        <ul class="pts">
+          <li>Design a 4-bit universal shift register using logic gates and D flip-flops.</li>
+          <li>Understand how a 4:1 MUX selects the operating mode.</li>
+          <li>Implement hold, shift right, shift left and parallel load.</li>
+          <li>Verify the design with a truth table and Logisim simulation.</li>
+        </ul>
+      </div>
+    </div>
+
+    <h2 class="sec">The four modes</h2>
+    <div class="cards">
+      <div class="card"><div class="label">S1 S0 = 00</div><div class="t">Hold</div><div class="d">Data stays as it is.</div></div>
+      <div class="card"><div class="label">S1 S0 = 01</div><div class="t">Shift Right</div><div class="d">Serial input enters at Q3.</div></div>
+      <div class="card"><div class="label">S1 S0 = 10</div><div class="t">Shift Left</div><div class="d">Serial input enters at Q0.</div></div>
+      <div class="card"><div class="label">S1 S0 = 11</div><div class="t">Parallel Load</div><div class="d">All 4 bits loaded at once.</div></div>
+    </div>
+  </section>
+
+  <!-- 3. THEORY & LOGIC CIRCUIT -->
+  <section class="slide">
+    <div class="index">03 / 06</div>
+    <div class="eyebrow"><span class="rule"></span>Theory &amp; Logic Circuit</div>
+    <h1>Each stage: <span class="accent">one MUX + one D flip-flop</span></h1>
+    <p class="desc">Four identical stages share the select lines S1, S0 and a common clock. The MUX output Y feeds the D input, so Q(next) = D = Y on every rising clock edge.</p>
+
+    <div class="grid2">
+      <div>
+        <h2 class="sec">Gates &amp; components</h2>
+        <ul class="pts">
+          <li><b>4 × D flip-flops</b> <span>(IC 7474) — 1 bit each.</span></li>
+          <li><b>4 × 4:1 MUX</b> <span>(IC 74153, or AND-OR gates).</span></li>
+          <li><b>AND, OR, NOT</b> <span>(ICs 7408, 7432, 7404) — per MUX: 4 × 3-input AND, 1 × 4-input OR, NOT gates for S1′ and S0′ shared by all stages.</span></li>
+          <li><b>CLK and CLR</b> <span>common to all flip-flops.</span></li>
+        </ul>
+        <div class="eq"><b>Y</b> = S1′S0′·I0 + S1′S0·I1 + S1S0′·I2 + S1S0·I3</div>
+        <p class="desc" style="margin-top:10px;font-size:12.5px;">K-map: the four select minterms are isolated, so this SOP is already minimal.</p>
+      </div>
+      <div>
+        <h2 class="sec">Circuit diagram (one stage)</h2>
+        <div class="diagram">
+          <svg viewBox="0 0 420 250" xmlns="http://www.w3.org/2000/svg" font-family="Segoe UI, sans-serif">
+            <defs><marker id="ar" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto"><path d="M0,0 L7,3.5 L0,7 Z" fill="#9fc0ff"/></marker></defs>
+            <g stroke="#9fc0ff" stroke-width="1.6" fill="none">
+              <path d="M70,52 H125" marker-end="url(#ar)"/><path d="M70,92 H125" marker-end="url(#ar)"/>
+              <path d="M70,132 H125" marker-end="url(#ar)"/><path d="M70,172 H125" marker-end="url(#ar)"/>
+              <path d="M205,112 H255" marker-end="url(#ar)"/>
+              <path d="M335,112 H385" marker-end="url(#ar)"/>
+              <path d="M165,232 V196" marker-end="url(#ar)"/>
+              <path d="M295,232 V196" marker-end="url(#ar)"/>
+              <path d="M370,112 V30 H100" stroke-dasharray="4 3"/>
+            </g>
+            <rect x="125" y="34" width="80" height="162" rx="8" fill="rgba(124,140,255,.18)" stroke="#7c8cff" stroke-width="1.8"/>
+            <text x="165" y="108" fill="#e9edff" font-size="15" font-weight="700" text-anchor="middle">4:1</text>
+            <text x="165" y="128" fill="#e9edff" font-size="15" font-weight="700" text-anchor="middle">MUX</text>
+            <rect x="255" y="62" width="80" height="134" rx="8" fill="rgba(124,140,255,.18)" stroke="#7c8cff" stroke-width="1.8"/>
+            <text x="295" y="120" fill="#e9edff" font-size="15" font-weight="700" text-anchor="middle">D FF</text>
+            <text x="262" y="82" fill="#a3aed8" font-size="11">D</text>
+            <text x="262" y="188" fill="#a3aed8" font-size="11">CLK ▸</text>
+            <g fill="#a3aed8" font-size="11" text-anchor="end">
+              <text x="64" y="56">I0 hold (Qi)</text><text x="64" y="96">I1 right (Qi+1)</text>
+              <text x="64" y="136">I2 left (Qi−1)</text><text x="64" y="176">I3 load (Pi)</text>
+            </g>
+            <g fill="#9fc0ff" font-size="12" text-anchor="middle" font-weight="700">
+              <text x="165" y="246">S1 S0</text><text x="295" y="246">CLK</text>
+              <text x="360" y="132" text-anchor="start" dy="0">Qi</text>
+            </g>
+          </svg>
+        </div>
+        <p class="cap">Dashed line: Qi feeds back to I0 (hold) and to the neighbouring stages.</p>
+      </div>
+    </div>
+
+    <h2 class="sec">MUX input wiring per bit (Q3 is the MSB)</h2>
+    <table>
+      <tr><th>Bit</th><th>I0 (00) Hold</th><th>I1 (01) Right</th><th>I2 (10) Left</th><th>I3 (11) Load</th></tr>
+      <tr><td>Q3</td><td>Q3</td><td>SRI</td><td>Q2</td><td>P3</td></tr>
+      <tr><td>Q2</td><td>Q2</td><td>Q3</td><td>Q1</td><td>P2</td></tr>
+      <tr><td>Q1</td><td>Q1</td><td>Q2</td><td>Q0</td><td>P1</td></tr>
+      <tr><td>Q0</td><td>Q0</td><td>Q1</td><td>SLI</td><td>P0</td></tr>
+    </table>
+  </section>
+
+  <!-- 4. CIRCUIT DESIGN IN LOGISIM -->
+  <section class="slide">
+    <div class="index">04 / 06</div>
+    <div class="eyebrow"><span class="rule"></span>Circuit Design in Logisim</div>
+    <h1>Implementation <span class="accent">&amp; working</span></h1>
+
+    <div class="grid2">
+      <div>
+        <div class="shot">
+          <input type="file" accept="image/*" data-shot>
+          <div class="hint" id="sampleCircuit" style="padding:6px;width:100%"></div>
+        </div>
+        <p class="cap">Sample schematic view. Click the image to replace it with your own Logisim screenshot.</p>
+      </div>
+      <div>
+        <h2 class="sec">How the circuit is built</h2>
+        <ul class="pts">
+          <li>Inputs: <b>S1, S0</b> (mode), <b>CLK</b>, <b>CLR</b>, parallel data <b>P3–P0</b>, serial inputs <b>SRI</b> and <b>SLI</b>.</li>
+          <li>Each stage has a 4:1 MUX (AND-OR gates, shared NOT gates for S1′ and S0′) whose output drives a D flip-flop.</li>
+          <li>Outputs <b>Q3–Q0</b> are shown on LEDs / output pins.</li>
+        </ul>
+        <h2 class="sec">How it works</h2>
+        <ul class="pts">
+          <li><b>00 Hold:</b> each flip-flop re-loads its own Q.</li>
+          <li><b>01 Shift right:</b> Qi ← Qi+1, and Q3 ← SRI.</li>
+          <li><b>10 Shift left:</b> Qi ← Qi−1, and Q0 ← SLI.</li>
+          <li><b>11 Parallel load:</b> Qi ← Pi.</li>
+          <li>All changes happen only on the <b>rising clock edge</b>.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- 5. SIMULATION RESULTS -->
+  <section class="slide">
+    <div class="index">05 / 06</div>
+    <div class="eyebrow"><span class="rule"></span>Simulation Results</div>
+    <h1>Four test steps <span class="accent">verify every mode</span></h1>
+    <p class="desc">One clock pulse is applied per step, starting from a parallel load of 1011.</p>
+
+    <div class="grid2">
+      <div>
+        <h2 class="sec">Input–output combinations</h2>
+        <table>
+          <tr><th>Step</th><th>S1 S0</th><th>Applied</th><th>Q3 Q2 Q1 Q0</th><th>Operation</th></tr>
+          <tr><td>1</td><td>11</td><td>P = 1011</td><td class="mono">1 0 1 1</td><td>Parallel load</td></tr>
+          <tr><td>2</td><td>00</td><td>clock</td><td class="mono">1 0 1 1</td><td>Hold</td></tr>
+          <tr><td>3</td><td>01</td><td>SRI = 1</td><td class="mono">1 1 0 1</td><td>Shift right</td></tr>
+          <tr><td>4</td><td>10</td><td>SLI = 0</td><td class="mono">1 0 1 0</td><td>Shift left</td></tr>
+        </table>
+        <h2 class="sec">Mode truth table</h2>
+        <table>
+          <tr><th>S1</th><th>S0</th><th>Operation</th><th>Next state</th></tr>
+          <tr><td>0</td><td>0</td><td>Hold</td><td class="mono">Q(next) = Q</td></tr>
+          <tr><td>0</td><td>1</td><td>Shift right</td><td class="mono">SRI→Q3→Q2→Q1→Q0</td></tr>
+          <tr><td>1</td><td>0</td><td>Shift left</td><td class="mono">SLI→Q0→Q1→Q2→Q3</td></tr>
+          <tr><td>1</td><td>1</td><td>Parallel load</td><td class="mono">Q = P3 P2 P1 P0</td></tr>
+        </table>
+      </div>
+      <div>
+        <h2 class="sec">Logisim screenshots</h2>
+        <div class="shot">
+          <input type="file" accept="image/*" data-shot>
+          <div class="hint sample" data-steps="0,1" style="padding:6px;width:100%"></div>
+        </div>
+        <p class="cap">Steps 1–2 — load 1011, then hold (sample output; click to replace)</p>
+        <div class="shot" style="margin-top:12px;">
+          <input type="file" accept="image/*" data-shot>
+          <div class="hint sample" data-steps="2,3" style="padding:6px;width:100%"></div>
+        </div>
+        <p class="cap">Steps 3–4 — shift right (SRI = 1), shift left (SLI = 0) (sample output; click to replace)</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 6. CONCLUSION & APPLICATIONS -->
+  <section class="slide">
+    <div class="index">06 / 06</div>
+    <div class="eyebrow"><span class="rule"></span>Conclusion &amp; Applications</div>
+    <h1>Logic that decides, <span class="accent">memory that remembers</span></h1>
+
+    <div class="cards c3" style="margin-top:22px;">
+      <div class="card">
+        <div class="label">Outcome</div>
+        <ul class="pts" style="margin-top:6px;">
+          <li>Designed and simulated a 4-bit universal shift register with hold, shift right, shift left and parallel load.</li>
+          <li>The MUX chooses the next value and the flip-flop stores it.</li>
+          <li>K-map confirmed the MUX logic is minimal, with shared inverters.</li>
+          <li>All four test steps matched the expected outputs.</li>
+        </ul>
+      </div>
+      <div class="card">
+        <div class="label">Applications</div>
+        <ul class="pts" style="margin-top:6px;">
+          <li><b>Microprocessors:</b> <span>temporary storage and shifting.</span></li>
+          <li><b>Communication:</b> <span>serial/parallel conversion (UART).</span></li>
+          <li><b>Arithmetic:</b> <span>multiply / divide by 2 via shifts.</span></li>
+          <li><b>Counters:</b> <span>ring and Johnson counters.</span></li>
+          <li><b>Memory:</b> <span>delay lines and FIFO.</span></li>
+        </ul>
+      </div>
+      <div class="card">
+        <div class="label">Possible Improvements</div>
+        <ul class="pts" style="margin-top:6px;">
+          <li>Extend to 8 / 16 / 32 bits by cascading stages.</li>
+          <li>Add arithmetic shift and rotate modes.</li>
+          <li>Use the single IC 74194 for a compact, low-power build.</li>
+          <li>Build it on a breadboard (7474, 74153, 7408, 7432) and lead into an ALU design.</li>
+        </ul>
+      </div>
+    </div>
+    <p class="desc" style="margin-top:26px; text-align:center; max-width:none;">Thank you — guided by Dayarnab Baidya.</p>
+  </section>
+
+</div>
+
+<div class="progress" id="progress"></div>
+<div class="arrows">
+  <div class="arrow" id="prev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg></div>
+  <div class="arrow" id="next"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg></div>
+</div>
+
+<script>
+const slides = [...document.querySelectorAll('.slide')];
+const progress = document.getElementById('progress');
+let cur = 0;
+slides.forEach((_, i) => {
+  const d = document.createElement('div'); d.className = 'dot';
+  d.onclick = () => go(i); progress.appendChild(d);
+});
+const linePaths = [
+  { d:"M 20,40 C 250,10 400,120 550,90 S 850,180 980,60", x:20, y:40 },
+  { d:"M 40,150 C 220,40 420,40 560,110 S 800,40 970,120", x:40, y:150 },
+  { d:"M 10,90 C 200,190 380,20 560,60 S 830,150 990,30", x:10, y:90 },
+  { d:"M 60,20 C 260,160 460,150 600,40 S 860,20 960,150", x:60, y:20 },
+  { d:"M 30,170 C 240,60 400,170 580,30 S 840,130 980,70", x:30, y:170 },
+  { d:"M 980,50 C 760,150 560,20 420,90 S 180,10 20,120", x:980, y:50 }
+];
+function updateLine(){
+  const p = linePaths[cur % linePaths.length];
+  const layer = document.getElementById('lineLayer');
+  layer.style.opacity = '0';
+  setTimeout(() => {
+    document.getElementById('pathTrack').setAttribute('d', p.d);
+    document.getElementById('pathGlow').setAttribute('d', p.d);
+    document.getElementById('lineNode').setAttribute('cx', p.x);
+    document.getElementById('lineNode').setAttribute('cy', p.y);
+    layer.style.opacity = '.95';
+  }, 220);
+}
+function go(n){
+  cur = (n + slides.length) % slides.length;
+  slides.forEach((s,i) => s.classList.toggle('active', i === cur));
+  [...progress.children].forEach((d,i) => d.classList.toggle('active', i === cur));
+  document.getElementById('deck').scrollTop = 0;
+  updateLine();
+}
+document.getElementById('next').onclick = () => go(cur + 1);
+document.getElementById('prev').onclick = () => go(cur - 1);
+document.addEventListener('keydown', e => {
+  if (e.target.isContentEditable) return;
+  if (e.key === 'ArrowRight') go(cur + 1);
+  if (e.key === 'ArrowLeft') go(cur - 1);
+});
+document.querySelectorAll('[data-shot]').forEach(inp => {
+  inp.addEventListener('change', () => {
+    const f = inp.files[0]; if (!f) return;
+    const r = new FileReader();
+    r.onload = () => {
+      const box = inp.parentElement;
+      box.querySelector('.hint')?.remove();
+      let img = box.querySelector('img');
+      if (!img) { img = document.createElement('img'); box.appendChild(img); }
+      img.src = r.result; box.style.borderStyle = 'solid';
+    };
+    r.readAsDataURL(f);
+  });
+});
+/* sample Logisim-style views */
+(function(){
+  const NS = 'http://www.w3.org/2000/svg';
+  const rows = [["Q3","SRI","Q2","P3"],["Q2","Q3","Q1","P2"],["Q1","Q2","Q0","P1"],["Q0","Q1","SLI","P0"]];
+  let c = `<svg viewBox="0 0 560 380" xmlns="${NS}" font-family="Consolas,monospace" style="background:#fff;border-radius:8px;width:100%;height:auto">
+    <text x="280" y="20" text-anchor="middle" font-size="13" font-weight="700" fill="#222">4-bit universal shift register (Logisim view)</text>
+    <text x="280" y="34" text-anchor="middle" font-size="10" fill="#666">S1 S0 go to every MUX select pin; CLK and CLR go to every flip-flop</text>`;
+  rows.forEach((r, k) => {
+    const y0 = 48 + k * 80, bit = 3 - k;
+    r.forEach((lab, i) => {
+      const y = y0 + 14 + i * 16;
+      c += `<text x="118" y="${y+3}" text-anchor="end" font-size="10" fill="#1d4ed8">${lab}</text><line x1="122" y1="${y}" x2="160" y2="${y}" stroke="#16a34a" stroke-width="1.6"/><text x="164" y="${y+3}" font-size="8" fill="#555">I${i}</text>`;
+    });
+    c += `<rect x="160" y="${y0}" width="56" height="68" fill="#fff" stroke="#222" stroke-width="1.6"/>
+      <text x="198" y="${y0+38}" text-anchor="middle" font-size="10" font-weight="700">MUX</text>
+      <line x1="216" y1="${y0+34}" x2="280" y2="${y0+34}" stroke="#16a34a" stroke-width="1.6"/>
+      <rect x="280" y="${y0}" width="64" height="68" fill="#fff" stroke="#222" stroke-width="1.6"/>
+      <text x="285" y="${y0+38}" font-size="10">D</text>
+      <text x="338" y="${y0+38}" text-anchor="end" font-size="10">Q</text>
+      <text x="312" y="${y0+22}" text-anchor="middle" font-size="9" fill="#555">D FF</text>
+      <path d="M300,${y0+68} l6,-8 l6,8" fill="none" stroke="#222" stroke-width="1.4"/>
+      <line x1="344" y1="${y0+34}" x2="400" y2="${y0+34}" stroke="#16a34a" stroke-width="1.6"/>
+      <circle cx="418" cy="${y0+34}" r="10" fill="#22c55e" stroke="#222" stroke-width="1.4"/>
+      <text x="438" y="${y0+38}" font-size="12" font-weight="700" fill="#222">Q${bit}</text>`;
+  });
+  c += `<text x="280" y="372" text-anchor="middle" font-size="10" fill="#666">Inputs: S1 S0, CLK, CLR, P3–P0, SRI, SLI   Outputs: Q3–Q0</text></svg>`;
+  const sc = document.getElementById('sampleCircuit'); if (sc) sc.innerHTML = c;
+
+  const steps = [
+    {n:1, s:"11", a:"P = 1011", q:[1,0,1,1], op:"Parallel load"},
+    {n:2, s:"00", a:"clock only", q:[1,0,1,1], op:"Hold"},
+    {n:3, s:"01", a:"SRI = 1", q:[1,1,0,1], op:"Shift right"},
+    {n:4, s:"10", a:"SLI = 0", q:[1,0,1,0], op:"Shift left"}
+  ];
+  document.querySelectorAll('.sample').forEach(box => {
+    const idx = box.dataset.steps.split(',').map(Number);
+    let g = `<svg viewBox="0 0 640 170" xmlns="${NS}" font-family="Consolas,monospace" style="background:#fff;border-radius:8px;width:100%;height:auto">`;
+    idx.forEach((si, p) => {
+      const st = steps[si], ox = 10 + p * 316;
+      g += `<rect x="${ox}" y="8" width="304" height="154" rx="8" fill="#f4f6fb" stroke="#c7cbe0"/>
+        <text x="${ox+12}" y="28" font-size="12" font-weight="700" fill="#222">Step ${st.n}: ${st.op}</text>
+        <text x="${ox+12}" y="48" font-size="11" fill="#444">S1 S0 = ${st.s[0]} ${st.s[1]}   ${st.a}</text>
+        <text x="${ox+12}" y="64" font-size="10" fill="#666">after one rising clock edge:</text>`;
+      st.q.forEach((v, i) => {
+        const cx = ox + 48 + i * 68;
+        g += `<circle cx="${cx}" cy="104" r="16" fill="${v ? '#22c55e' : '#1f2937'}" stroke="#222" stroke-width="1.6"/>
+          <text x="${cx}" y="109" text-anchor="middle" font-size="14" font-weight="700" fill="#fff">${v}</text>
+          <text x="${cx}" y="140" text-anchor="middle" font-size="11" fill="#1d4ed8">Q${3-i}</text>`;
+      });
+      g += `<text x="${ox+292}" y="28" text-anchor="end" font-size="12" font-weight="700" fill="#16a34a">${st.q.join('')}</text>`;
+    });
+    box.innerHTML = g + '</svg>';
+  });
+})();
+go(0);
+(function(){
+  const sky = document.getElementById('sky');
+  for (let i = 0; i < 110; i++){
+    const s = document.createElement('div');
+    const shine = i % 9 === 0;
+    s.className = 'star' + (shine ? ' shine' : '');
+    const z = shine ? 2 + Math.random() * 2.5 : 1 + Math.random() * 1.8;
+    s.style.cssText = `left:${Math.random()*100}%;top:${Math.random()*100}%;width:${z}px;height:${z}px;--t:${1.6+Math.random()*3.4}s;--dl:${-Math.random()*5}s`;
+    sky.appendChild(s);
+  }
+  function shoot(){
+    const m = document.createElement('div');
+    m.className = 'shoot';
+    m.style.left = (Math.random()*75) + '%';
+    m.style.top = (Math.random()*45) + '%';
+    sky.appendChild(m);
+    setTimeout(() => m.remove(), 1300);
+    setTimeout(shoot, 1500 + Math.random()*3000);
+  }
+  if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) setTimeout(shoot, 600);
+})();
+</script>
+</body>
+</html>
