@@ -1,5 +1,5 @@
-PROJECT : "Design and Simulation of a Smart Parking Slot Availability and Entry Control System Using Combinational Logic" 
-
+PROJECT : 
+"4-Bit Universal Shift Register"
 
 IS DONE BY 2620040172 MANNAVA YAGNA SARAVANA KUSHAL,2620080007 VEMULURI LOHITHA,2620080008 SUNDI MANILATHA,2620080013  MOKKAPATI SIMRIT
 
